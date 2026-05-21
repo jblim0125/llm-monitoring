@@ -433,35 +433,6 @@
       "transformations": [
         { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
       ]
-    },
-    {
-      "type": "row",
-      "id": 104,
-      "title": "선택 사용자 로그",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 63 },
-      "collapsed": false
-    },
-    {
-      "type": "logs",
-      "id": 16,
-      "title": "선택 사용자/팀 로그 (Loki)",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 64 },
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "showCommonLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": false,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{service_name=~\"$agent\", user_name=~\"$user\"}"
-        }
-      ]
     }
   ],
   "refresh": "30s",
