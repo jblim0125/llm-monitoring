@@ -49,7 +49,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_token_usage_total{type=\"input\"}[$__range])) or sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=\"input\"}[$__range]))"
+          "expr": "sum(increase(claude_code_token_usage_tokens_total{type=\"input\"}[$__range])) or sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=\"input\"}[$__range]))"
         }
       ]
     },
@@ -75,7 +75,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_token_usage_total{type=\"output\"}[$__range])) or sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[$__range]))"
+          "expr": "sum(increase(claude_code_token_usage_tokens_total{type=\"output\"}[$__range])) or sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[$__range]))"
         }
       ]
     },
@@ -100,7 +100,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_cost_usage_total[$__range]))"
+          "expr": "sum(increase(claude_code_cost_usage_USD_total[$__range]))"
         }
       ]
     },
@@ -152,7 +152,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (type) (rate(claude_code_token_usage_total[$__rate_interval]))",
+          "expr": "sum by (type) (rate(claude_code_token_usage_tokens_total[$__rate_interval]))",
           "legendFormat": "claude_code/{{type}}"
         },
         {
@@ -178,7 +178,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (rate(claude_code_cost_usage_total[$__rate_interval])) * 3600",
+          "expr": "sum by (model) (rate(claude_code_cost_usage_USD_total[$__rate_interval])) * 3600",
           "legendFormat": "{{model}}"
         }
       ]
@@ -193,8 +193,8 @@
     {
       "type": "piechart",
       "id": 7,
-      "title": "에이전트별 요청 비율",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "에이전트별 요청 비율 (Loki 이벤트)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
       "options": {
         "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
@@ -204,8 +204,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (agent) (increase(claude_code_api_request_total[$__range])) or sum by (agent) (increase(gen_ai_client_operation_duration_count[$__range]))",
-          "legendFormat": "{{agent}}"
+          "expr": "sum by (service_name) (count_over_time({service_name=~\"$agent\"} | event_name=\"api_request\" [$__range]))",
+          "legendFormat": "{{service_name}}"
         }
       ]
     },
@@ -220,7 +220,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (model) (increase(claude_code_token_usage_total[$__range])))",
+          "expr": "topk(10, sum by (model) (increase(claude_code_token_usage_tokens_total[$__range])))",
           "legendFormat": "{{model}}",
           "format": "table",
           "instant": true
@@ -230,14 +230,14 @@
     {
       "type": "table",
       "id": 9,
-      "title": "Top 도구 호출",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "Top 도구 호출 (Loki 이벤트)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
       "options": { "showHeader": true, "footer": { "show": false } },
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(15, sum by (tool, decision) (increase(claude_code_code_edit_tool_decision_total[$__range])))",
+          "expr": "topk(15, sum by (tool_name, decision) (count_over_time({service_name=~\"$agent\"} | event_name=\"tool_decision\" [$__range])))",
           "format": "table",
           "instant": true
         }
@@ -256,37 +256,37 @@
     {
       "type": "timeseries",
       "id": 10,
-      "title": "API 오류율 (status != 200)",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "도구 실패율 (tool_result.success=false)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "fieldConfig": { "defaults": { "unit": "ops" } },
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (status, model) (rate(claude_code_api_error_total[$__rate_interval]))",
-          "legendFormat": "{{model}} / {{status}}"
+          "expr": "sum by (tool_name) (rate({service_name=~\"$agent\"} | event_name=\"tool_result\" | success=\"false\" [$__rate_interval]))",
+          "legendFormat": "{{tool_name}}"
         }
       ]
     },
     {
       "type": "timeseries",
       "id": 11,
-      "title": "Copilot/GenAI 호출 지연 시간 (P50 / P95)",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "API 호출 지연 시간 P50/P95 (Loki: duration_ms)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-      "fieldConfig": { "defaults": { "unit": "s" } },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, gen_ai_request_model) (rate(gen_ai_client_operation_duration_bucket[$__rate_interval])))",
-          "legendFormat": "p50 / {{gen_ai_request_model}}"
+          "expr": "quantile_over_time(0.5, {service_name=~\"$agent\"} | event_name=\"api_request\" | unwrap duration_ms [$__rate_interval]) by (model)",
+          "legendFormat": "p50 / {{model}}"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, gen_ai_request_model) (rate(gen_ai_client_operation_duration_bucket[$__rate_interval])))",
-          "legendFormat": "p95 / {{gen_ai_request_model}}"
+          "expr": "quantile_over_time(0.95, {service_name=~\"$agent\"} | event_name=\"api_request\" | unwrap duration_ms [$__rate_interval]) by (model)",
+          "legendFormat": "p95 / {{model}}"
         }
       ]
     },
@@ -315,7 +315,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{service_name=~\"claude-code|copilot-chat|openclaw-gateway\"}"
+          "expr": "{service_name=~\"$agent\"}"
         }
       ]
     }
@@ -327,9 +327,10 @@
     "list": [
       {
         "name": "agent",
+        "label": "Agent (service_name)",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values(claude_code_session_count_total, agent)", "refId": "agent" },
+        "query": { "query": "label_values(claude_code_session_count_total, service_name)", "refId": "agent" },
         "includeAll": true,
         "multi": true,
         "current": { "selected": false, "text": "All", "value": "$__all" }
@@ -338,7 +339,7 @@
         "name": "model",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values(claude_code_token_usage_total, model)", "refId": "model" },
+        "query": { "query": "label_values(claude_code_token_usage_tokens_total, model)", "refId": "model" },
         "includeAll": true,
         "multi": true,
         "current": { "selected": false, "text": "All", "value": "$__all" }
@@ -350,6 +351,6 @@
   "timezone": "browser",
   "title": "LLM Overview — 토큰 / 비용 / 세션 / 모델",
   "uid": "llm-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

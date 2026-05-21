@@ -57,7 +57,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(count by (user_name) (increase(claude_code_session_count_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))"
+          "expr": "count(count by (user_name) (increase(claude_code_session_count_total{user_name!=\"\", service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))"
         }
       ]
     },
@@ -82,7 +82,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(count by (team) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))"
+          "expr": "count(count by (team) (increase(claude_code_session_count_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range])))"
         }
       ]
     },
@@ -107,7 +107,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_cost_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+          "expr": "sum(increase(claude_code_cost_usage_USD_total{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
         }
       ]
     },
@@ -132,7 +132,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+          "expr": "sum(increase(claude_code_token_usage_tokens_total{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
         }
       ]
     },
@@ -152,7 +152,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (user_name) (increase(claude_code_token_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "expr": "topk(10, sum by (user_name) (increase(claude_code_token_usage_tokens_total{user_name!=\"\", service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
           "legendFormat": "{{user_name}}",
           "format": "table",
           "instant": true
@@ -177,7 +177,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (user_name) (increase(claude_code_cost_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "expr": "topk(10, sum by (user_name) (increase(claude_code_cost_usage_USD_total{user_name!=\"\", service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
           "legendFormat": "{{user_name}}",
           "format": "table",
           "instant": true
@@ -210,7 +210,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (user_name) (rate(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval]))",
+          "expr": "sum by (user_name) (rate(claude_code_token_usage_tokens_total{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval]))",
           "legendFormat": "{{user_name}}"
         }
       ]
@@ -231,7 +231,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (user_name) (rate(claude_code_cost_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval])) * 3600",
+          "expr": "sum by (user_name) (rate(claude_code_cost_usage_USD_total{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval])) * 3600",
           "legendFormat": "{{user_name}}"
         }
       ]
@@ -249,7 +249,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (increase(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))",
+          "expr": "sum by (model) (increase(claude_code_token_usage_tokens_total{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))",
           "legendFormat": "{{model}}"
         }
       ]
@@ -257,16 +257,16 @@
     {
       "type": "barchart",
       "id": 10,
-      "title": "선택 사용자의 도구 사용",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "선택 사용자의 도구 사용 (Loki 이벤트)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
       "fieldConfig": { "defaults": { "unit": "short" } },
       "options": { "orientation": "horizontal", "showValue": "always" },
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(15, sum by (tool) (increase(claude_code_code_edit_tool_decision_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
-          "legendFormat": "{{tool}}",
+          "expr": "topk(15, sum by (tool_name) (count_over_time({service_name=~\"$agent\", user_name=~\"$user\"} | event_name=\"tool_decision\" [$__range])))",
+          "legendFormat": "{{tool_name}}",
           "format": "table",
           "instant": true
         }
@@ -278,8 +278,8 @@
     {
       "type": "stat",
       "id": 11,
-      "title": "선택 사용자 API 오류 수",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "title": "선택 사용자 도구 실패 수 (Loki: tool_result.success=false)",
+      "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
       "options": {
         "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
@@ -302,14 +302,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_api_error_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+          "expr": "sum(count_over_time({service_name=~\"$agent\", user_name=~\"$user\"} | event_name=\"tool_result\" | success=\"false\" [$__range]))"
         }
       ]
     },
     {
       "type": "row",
       "id": 102,
-      "title": "팀별 분석 ($team)",
+      "title": "팀별 분석 ($team) — team 라벨이 주입된 경우만 표시",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
       "collapsed": false
     },
@@ -329,7 +329,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (team) (rate(claude_code_token_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__rate_interval]))",
+          "expr": "sum by (team) (rate(claude_code_token_usage_tokens_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__rate_interval]))",
           "legendFormat": "{{team}}"
         }
       ]
@@ -345,7 +345,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(20, sum by (team) (increase(claude_code_cost_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))",
+          "expr": "topk(20, sum by (team) (increase(claude_code_cost_usage_USD_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range])))",
           "legendFormat": "{{team}}",
           "format": "table",
           "instant": true
@@ -365,25 +365,25 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count by (team) (count by (team, user_name) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))",
+          "expr": "count by (team) (count by (team, user_name) (increase(claude_code_session_count_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range])))",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "sum by (team) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "expr": "sum by (team) (increase(claude_code_session_count_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range]))",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "sum by (team) (increase(claude_code_token_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "expr": "sum by (team) (increase(claude_code_token_usage_tokens_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range]))",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "sum by (team) (increase(claude_code_cost_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "expr": "sum by (team) (increase(claude_code_cost_usage_USD_total{team!=\"\", service_name=~\"$agent\", team=~\"$team\"}[$__range]))",
           "format": "table",
           "instant": true
         }
@@ -425,7 +425,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(30, sum by (user_name, model) (increase(claude_code_token_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "expr": "topk(30, sum by (user_name, model) (increase(claude_code_token_usage_tokens_total{user_name!=\"\", service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
           "format": "table",
           "instant": true
         }
@@ -459,7 +459,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}"
+          "expr": "{service_name=~\"$agent\", user_name=~\"$user\"}"
         }
       ]
     }
@@ -471,10 +471,10 @@
     "list": [
       {
         "name": "agent",
-        "label": "Agent",
+        "label": "Agent (service_name)",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\"}, agent)", "refId": "agent" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\"}, service_name)", "refId": "agent" },
         "includeAll": true,
         "multi": true,
         "current": { "selected": false, "text": "All", "value": "$__all" }
@@ -484,7 +484,7 @@
         "label": "Team",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", agent=~\"$agent\", team!=\"\"}, team)", "refId": "team" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", service_name=~\"$agent\", team!=\"\"}, team)", "refId": "team" },
         "includeAll": true,
         "multi": true,
         "current": { "selected": false, "text": "All", "value": "$__all" },
@@ -495,7 +495,7 @@
         "label": "User",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", agent=~\"$agent\", team=~\"$team\", user_name!=\"\"}, user_name)", "refId": "user" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", service_name=~\"$agent\", team=~\"$team\", user_name!=\"\"}, user_name)", "refId": "user" },
         "includeAll": true,
         "multi": true,
         "current": { "selected": false, "text": "All", "value": "$__all" },
@@ -508,6 +508,6 @@
   "timezone": "browser",
   "title": "LLM by User / Team — 개인·팀 단위 사용량",
   "uid": "llm-by-user",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
