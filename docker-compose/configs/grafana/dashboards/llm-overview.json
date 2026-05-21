@@ -107,11 +107,12 @@
     {
       "type": "stat",
       "id": 4,
-      "title": "세션 수",
+      "title": "활성 세션 수",
+      "description": "최근 5분 내 활동이 있던 세션. session_id별 시리즈 개수로 카운트.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
       "options": {
-        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "background",
         "graphMode": "area"
       },
@@ -125,7 +126,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(claude_code_session_count_total{service_name=~\"$agent\", user_name=~\"$user\"}[$__range]))"
+          "expr": "count(claude_code_session_count_total{service_name=~\"$agent\", user_name=~\"$user\"})"
         }
       ]
     },

@@ -62,13 +62,13 @@ Claude Code의 `settings.json`은 다음 위치에서 읽힙니다 (아래로 �
 
 ### 엔드포인트를 어디로?
 
-| 환경                  | `OTEL_EXPORTER_OTLP_ENDPOINT`             |
-| --------------------- | ----------------------------------------- |
-| 로컬 docker-compose   | `http://localhost:4318`                   |
-| 포트 충돌로 외부 노출 변경 시 | `http://<host>:14318` 등 매핑한 포트 사용  |
-| K8s + port-forward    | `http://localhost:4318` (forward 후)      |
-| K8s NodePort          | `http://<node-ip>:30318`                  |
-| K8s Ingress           | `https://otlp.llm-monitoring.example.com` |
+| 환경                          | `OTEL_EXPORTER_OTLP_ENDPOINT`             |
+| ----------------------------- | ----------------------------------------- |
+| 로컬 docker-compose           | `http://localhost:4318`                   |
+| 포트 충돌로 외부 노출 변경 시 | `http://<host>:14318` 등 매핑한 포트 사용 |
+| K8s + port-forward            | `http://localhost:4318` (forward 후)      |
+| K8s NodePort                  | `http://<node-ip>:30318`                  |
+| K8s Ingress                   | `https://otlp.llm-monitoring.example.com` |
 
 `OTEL_EXPORTER_OTLP_ENDPOINT`에는 **base URL만** 넣습니다.
 `/v1/metrics`, `/v1/logs`, `/v1/traces` 경로는 SDK가 자동 부가합니다.
@@ -91,12 +91,12 @@ Claude Code의 `settings.json`은 다음 위치에서 읽힙니다 (아래로 �
 
 | 키                       | 예시                         | 용도 / 카디널리티 비고                              |
 | ------------------------ | ---------------------------- | --------------------------------------------------- |
-| `service.name`           | `claude-code`                | 에이전트 식별. Prom 라벨 `service_name`으로 들어옴   |
-| `deployment.environment` | `local` / `prod` / `staging` | 환경 구분                                            |
-| `user.name`              | `jblim`                      | 사번/로그인 ID — Top N 사용자 패널에 사용            |
-| `user.email`             | `jblim@example.com`          | (선택) 사람이 알아보기 쉬운 식별자. 카디널리티 주의   |
-| `team`                   | `platform`                   | 팀별 합산                                            |
-| `org.unit`               | `cloud-infra`                | (선택) 더 큰 조직 단위                               |
+| `service.name`           | `claude-code`                | 에이전트 식별. Prom 라벨 `service_name`으로 들어옴  |
+| `deployment.environment` | `local` / `prod` / `staging` | 환경 구분                                           |
+| `user.name`              | `jblim`                      | 사번/로그인 ID — Top N 사용자 패널에 사용           |
+| `user.email`             | `jblim@example.com`          | (선택) 사람이 알아보기 쉬운 식별자. 카디널리티 주의 |
+| `team`                   | `platform`                   | 팀별 합산                                           |
+| `org.unit`               | `cloud-infra`                | (선택) 더 큰 조직 단위                              |
 
 > 직접 API 키 / Bedrock / Vertex / Foundry 사용 시에는 Claude 계정이 없어
 > `user.email`, `user.account_*` 가 비어 있습니다. 이 경우
@@ -159,11 +159,11 @@ Prometheus는 라벨 조합마다 별도 시계열을 만듭니다. 다음 상�
 
 ### 메트릭 카디널리티 제어 환경변수
 
-| 환경변수                             | 기본값 | 효과                                                  |
-| ------------------------------------ | ------ | ----------------------------------------------------- |
-| `OTEL_METRICS_INCLUDE_SESSION_ID`    | true   | `session_id` 라벨 포함 — **운영에선 false 권장**       |
-| `OTEL_METRICS_INCLUDE_VERSION`       | false  | `app_version` 라벨 포함 — 버전별 추적이 필요할 때만   |
-| `OTEL_METRICS_INCLUDE_ACCOUNT_UUID`  | true   | `user_account_uuid`/`user_account_id` 라벨 포함        |
+| 환경변수                            | 기본값 | 효과                                                |
+| ----------------------------------- | ------ | --------------------------------------------------- |
+| `OTEL_METRICS_INCLUDE_SESSION_ID`   | true   | `session_id` 라벨 포함 — **운영에선 false 권장**    |
+| `OTEL_METRICS_INCLUDE_VERSION`      | false  | `app_version` 라벨 포함 — 버전별 추적이 필요할 때만 |
+| `OTEL_METRICS_INCLUDE_ACCOUNT_UUID` | true   | `user_account_uuid`/`user_account_id` 라벨 포함     |
 
 운영 규모가 커질수록 `INCLUDE_SESSION_ID=false`가 가장 큰 절감 효과를 냅니다.
 
@@ -188,12 +188,12 @@ Prometheus는 라벨 조합마다 별도 시계열을 만듭니다. 다음 상�
 
 데이터 노출 수준은 4단계 게이트로 제어됩니다 (각각 기본 off):
 
-| 환경변수                  | 켜면 발생하는 일                                                                |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `OTEL_LOG_USER_PROMPTS`  | `user_prompt` 이벤트의 `prompt` 속성에 실제 프롬프트 본문 포함                    |
-| `OTEL_LOG_TOOL_DETAILS`  | `tool_result.tool_input`, `tool_parameters` (Bash 명령 전문, MCP 인자 등) 포함     |
-| `OTEL_LOG_TOOL_CONTENT`  | 트레이스 스팬 이벤트에 도구 입력/출력 콘텐츠 포함 (스팬당 60KB 잘림). 트레이스 필수 |
-| `OTEL_LOG_RAW_API_BODIES`| 전체 Anthropic Messages API 요청/응답 본문을 `api_request_body`/`_response_body` 로그로 발행 |
+| 환경변수                  | 켜면 발생하는 일                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
+| `OTEL_LOG_USER_PROMPTS`   | `user_prompt` 이벤트의 `prompt` 속성에 실제 프롬프트 본문 포함                               |
+| `OTEL_LOG_TOOL_DETAILS`   | `tool_result.tool_input`, `tool_parameters` (Bash 명령 전문, MCP 인자 등) 포함               |
+| `OTEL_LOG_TOOL_CONTENT`   | 트레이스 스팬 이벤트에 도구 입력/출력 콘텐츠 포함 (스팬당 60KB 잘림). 트레이스 필수          |
+| `OTEL_LOG_RAW_API_BODIES` | 전체 Anthropic Messages API 요청/응답 본문을 `api_request_body`/`_response_body` 로그로 발행 |
 
 `OTEL_LOG_RAW_API_BODIES=file:/var/log/claude-bodies`로 디렉토리 모드를 켜면
 이벤트엔 파일 포인터(`body_ref`)만 들어가고 본문은 디스크에 따로 기록됩니다 — 잘림 없음.
@@ -241,16 +241,16 @@ OTel SDK의 **단위 접미사 자동 부여 규칙**:
 - 단위 `USD` → `_USD_total`
 - 단위 `s` (seconds) → `_seconds_total`
 
-| OTel 이름                              | Prometheus 이름                              | 단위   | 의미                                                               |
-| -------------------------------------- | -------------------------------------------- | ------ | ------------------------------------------------------------------ |
-| `claude_code.session.count`            | `claude_code_session_count_total`            | count  | 세션 시작 수. 라벨: `start_type` (fresh/resume/continue)             |
-| `claude_code.lines_of_code.count`      | `claude_code_lines_of_code_count_total`      | count  | 수정된 코드 라인 수. 라벨: `type` (added/removed)                    |
-| `claude_code.pull_request.count`       | `claude_code_pull_request_count_total`       | count  | 생성된 PR 수                                                        |
-| `claude_code.commit.count`             | `claude_code_commit_count_total`             | count  | 생성된 git 커밋 수                                                   |
-| `claude_code.cost.usage`               | `claude_code_cost_usage_USD_total`           | USD    | 누적 비용. 라벨: `model`, `query_source`, `speed`, `effort`, `agent.name`, `skill.name`, `plugin.name`, `marketplace.name` |
-| `claude_code.token.usage`              | `claude_code_token_usage_tokens_total`       | tokens | 토큰 사용량. 라벨: `type` (input/output/cacheRead/cacheCreation) + 위 비용 라벨 동일 |
-| `claude_code.code_edit_tool.decision`  | `claude_code_code_edit_tool_decision_total`  | count  | Edit/Write/NotebookEdit 권한 결정. 라벨: `tool_name`, `decision`, `source`, `language` |
-| `claude_code.active_time.total`        | `claude_code_active_time_seconds_total`      | s      | 활성 사용 시간. 라벨: `type` (user/cli)                              |
+| OTel 이름                             | Prometheus 이름                             | 단위   | 의미                                                                                                                       |
+| ------------------------------------- | ------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `claude_code.session.count`           | `claude_code_session_count_total`           | count  | 세션 시작 수. 라벨: `start_type` (fresh/resume/continue)                                                                   |
+| `claude_code.lines_of_code.count`     | `claude_code_lines_of_code_count_total`     | count  | 수정된 코드 라인 수. 라벨: `type` (added/removed)                                                                          |
+| `claude_code.pull_request.count`      | `claude_code_pull_request_count_total`      | count  | 생성된 PR 수                                                                                                               |
+| `claude_code.commit.count`            | `claude_code_commit_count_total`            | count  | 생성된 git 커밋 수                                                                                                         |
+| `claude_code.cost.usage`              | `claude_code_cost_usage_USD_total`          | USD    | 누적 비용. 라벨: `model`, `query_source`, `speed`, `effort`, `agent.name`, `skill.name`, `plugin.name`, `marketplace.name` |
+| `claude_code.token.usage`             | `claude_code_token_usage_tokens_total`      | tokens | 토큰 사용량. 라벨: `type` (input/output/cacheRead/cacheCreation) + 위 비용 라벨 동일                                       |
+| `claude_code.code_edit_tool.decision` | `claude_code_code_edit_tool_decision_total` | count  | Edit/Write/NotebookEdit 권한 결정. 라벨: `tool_name`, `decision`, `source`, `language`                                     |
+| `claude_code.active_time.total`       | `claude_code_active_time_seconds_total`     | s      | 활성 사용 시간. 라벨: `type` (user/cli)                                                                                    |
 
 > **자주 헷갈리는 점**: 공식 문서엔 `api_request`, `api_error`가 메트릭 표에 없습니다.
 > 이들은 **이벤트로만** 발행됩니다. "API 호출 수" 패널은 LogQL로 만들어야 합니다:
@@ -261,48 +261,48 @@ OTel SDK의 **단위 접미사 자동 부여 규칙**:
 
 모든 메트릭에 부착되는 **표준 라벨**:
 
-| 라벨                  | 출처                                                                              |
-| --------------------- | --------------------------------------------------------------------------------- |
-| `service_name`        | `service.name` 리소스 속성 (기본 `claude-code`)                                    |
-| `service_version`     | Claude Code 버전                                                                   |
-| `host_arch`, `os_*`   | OS / 아키텍처                                                                      |
-| `terminal_type`       | `iTerm.app` / `vscode` / `cursor` / `tmux` 등                                       |
-| `organization_id`     | OAuth 인증 시 조직 UUID                                                            |
-| `user_account_uuid`   | OAuth 인증 시 계정 UUID                                                            |
-| `user_email`          | OAuth 인증 시 이메일 (DISABLE 가능)                                                |
-| `user_id`             | 설치 단위 익명 ID                                                                  |
-| `session_id`          | 세션 단위 — **카디널리티 폭발 1순위**. 운영에선 `OTEL_METRICS_INCLUDE_SESSION_ID=false` 권장 |
-| `app_version`         | `OTEL_METRICS_INCLUDE_VERSION=true`일 때만 포함                                     |
+| 라벨                | 출처                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `service_name`      | `service.name` 리소스 속성 (기본 `claude-code`)                                              |
+| `service_version`   | Claude Code 버전                                                                             |
+| `host_arch`, `os_*` | OS / 아키텍처                                                                                |
+| `terminal_type`     | `iTerm.app` / `vscode` / `cursor` / `tmux` 등                                                |
+| `organization_id`   | OAuth 인증 시 조직 UUID                                                                      |
+| `user_account_uuid` | OAuth 인증 시 계정 UUID                                                                      |
+| `user_email`        | OAuth 인증 시 이메일 (DISABLE 가능)                                                          |
+| `user_id`           | 설치 단위 익명 ID                                                                            |
+| `session_id`        | 세션 단위 — **카디널리티 폭발 1순위**. 운영에선 `OTEL_METRICS_INCLUDE_SESSION_ID=false` 권장 |
+| `app_version`       | `OTEL_METRICS_INCLUDE_VERSION=true`일 때만 포함                                              |
 
 ## 8) 발행되는 이벤트 (Loki / SIEM)
 
 `OTEL_LOGS_EXPORTER=otlp`일 때 `service_name="claude-code"` 스트림에 OTLP log record로
 발행됩니다. 각 이벤트는 `event_name` structured metadata로 식별됩니다.
 
-| `event_name`               | 발행 시점                                          | 주요 필드                                                                                    |
-| -------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `user_prompt`              | 사용자가 프롬프트 제출 시                          | `prompt_length`, `prompt` (게이트), `command_name`, `command_source`                          |
-| `api_request`              | Claude API 호출 1회당                              | `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_creation_tokens`, `cost_usd`, `duration_ms`, `request_id`, `query_source`, `speed`, `effort` |
-| `api_error`                | API 호출 최종 실패 (모든 재시도 소진 후)            | `model`, `error`, `status_code`, `duration_ms`, `attempt`, `request_id`                       |
-| `api_retries_exhausted`    | 재시도 후 포기 시 (`api_error`와 함께)              | `total_attempts`, `total_retry_duration_ms`                                                   |
-| `api_request_body`         | `OTEL_LOG_RAW_API_BODIES` 활성 시 요청별            | `body` 또는 `body_ref`, `body_length`, `body_truncated`                                       |
-| `api_response_body`        | `OTEL_LOG_RAW_API_BODIES` 활성 시 응답별            | 위와 동일                                                                                     |
-| `tool_result`              | 도구 실행 완료 시                                   | `tool_name`, `tool_use_id`, `success`, `duration_ms`, `error_type`, `decision_type`, `decision_source`, `tool_input_size_bytes`, `tool_result_size_bytes`, `mcp_server_scope` |
-| `tool_decision`            | 도구 권한 결정 시                                   | `tool_name`, `tool_use_id`, `decision` (accept/reject), `source`                              |
-| `permission_mode_changed`  | 권한 모드 전환 시 (Shift+Tab, exit plan 등)         | `from_mode`, `to_mode`, `trigger`                                                             |
-| `auth`                     | `/login`·`/logout` 완료 시                          | `action`, `success`, `auth_method`, `error_category`, `status_code`                            |
-| `mcp_server_connection`    | MCP 서버 연결·해제·실패 시                          | `status`, `transport_type`, `server_scope`, `duration_ms`, `error_code`, `server_name` (게이트) |
-| `internal_error`           | Claude Code 내부 예외 포착 시                       | `error_name`, `error_code` (메시지·스택은 포함 안 됨)                                          |
-| `plugin_installed`         | `claude plugin install` 완료 시                     | `plugin.name`, `plugin.version`, `marketplace.name`, `marketplace.is_official`, `install.trigger` |
-| `plugin_loaded`            | 세션 시작 시 활성 플러그인당 1회                    | `plugin.name`, `plugin.scope`, `enabled_via`, `has_hooks`, `has_mcp`, `skill_path_count` 등    |
-| `skill_activated`          | 스킬 호출 시                                        | `skill.name`, `invocation_trigger`, `skill.source`                                             |
-| `at_mention`               | `@`-멘션 해석 시                                    | `mention_type` (file/directory/agent/mcp_resource), `success`                                 |
-| `hook_registered`          | 세션 시작 시 구성된 훅당 1회                        | `hook_event`, `hook_type`, `hook_source`                                                       |
-| `hook_execution_start`     | 훅 실행 시작 시                                     | `hook_event`, `hook_name`, `num_hooks`                                                         |
-| `hook_execution_complete`  | 훅 실행 완료 시                                     | `num_success`, `num_blocking`, `num_non_blocking_error`, `num_cancelled`, `total_duration_ms`  |
-| `hook_plugin_metrics`      | 공식 마켓플레이스 플러그인 훅이 메트릭 발행 시       | `plugin_id`, `hook_event`, 플러그인이 정의한 키 (최대 20)                                       |
-| `compaction`               | 대화 컴팩션 완료 시                                  | `trigger` (auto/manual), `success`, `duration_ms`, `pre_tokens`, `post_tokens`, `error`         |
-| `feedback_survey`          | 세션 품질 설문 표시·응답 시                          | `event_type`, `appearance_id`, `survey_type`, `response`                                       |
+| `event_name`              | 발행 시점                                      | 주요 필드                                                                                                                                                                     |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_prompt`             | 사용자가 프롬프트 제출 시                      | `prompt_length`, `prompt` (게이트), `command_name`, `command_source`                                                                                                          |
+| `api_request`             | Claude API 호출 1회당                          | `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_creation_tokens`, `cost_usd`, `duration_ms`, `request_id`, `query_source`, `speed`, `effort`            |
+| `api_error`               | API 호출 최종 실패 (모든 재시도 소진 후)       | `model`, `error`, `status_code`, `duration_ms`, `attempt`, `request_id`                                                                                                       |
+| `api_retries_exhausted`   | 재시도 후 포기 시 (`api_error`와 함께)         | `total_attempts`, `total_retry_duration_ms`                                                                                                                                   |
+| `api_request_body`        | `OTEL_LOG_RAW_API_BODIES` 활성 시 요청별       | `body` 또는 `body_ref`, `body_length`, `body_truncated`                                                                                                                       |
+| `api_response_body`       | `OTEL_LOG_RAW_API_BODIES` 활성 시 응답별       | 위와 동일                                                                                                                                                                     |
+| `tool_result`             | 도구 실행 완료 시                              | `tool_name`, `tool_use_id`, `success`, `duration_ms`, `error_type`, `decision_type`, `decision_source`, `tool_input_size_bytes`, `tool_result_size_bytes`, `mcp_server_scope` |
+| `tool_decision`           | 도구 권한 결정 시                              | `tool_name`, `tool_use_id`, `decision` (accept/reject), `source`                                                                                                              |
+| `permission_mode_changed` | 권한 모드 전환 시 (Shift+Tab, exit plan 등)    | `from_mode`, `to_mode`, `trigger`                                                                                                                                             |
+| `auth`                    | `/login`·`/logout` 완료 시                     | `action`, `success`, `auth_method`, `error_category`, `status_code`                                                                                                           |
+| `mcp_server_connection`   | MCP 서버 연결·해제·실패 시                     | `status`, `transport_type`, `server_scope`, `duration_ms`, `error_code`, `server_name` (게이트)                                                                               |
+| `internal_error`          | Claude Code 내부 예외 포착 시                  | `error_name`, `error_code` (메시지·스택은 포함 안 됨)                                                                                                                         |
+| `plugin_installed`        | `claude plugin install` 완료 시                | `plugin.name`, `plugin.version`, `marketplace.name`, `marketplace.is_official`, `install.trigger`                                                                             |
+| `plugin_loaded`           | 세션 시작 시 활성 플러그인당 1회               | `plugin.name`, `plugin.scope`, `enabled_via`, `has_hooks`, `has_mcp`, `skill_path_count` 등                                                                                   |
+| `skill_activated`         | 스킬 호출 시                                   | `skill.name`, `invocation_trigger`, `skill.source`                                                                                                                            |
+| `at_mention`              | `@`-멘션 해석 시                               | `mention_type` (file/directory/agent/mcp_resource), `success`                                                                                                                 |
+| `hook_registered`         | 세션 시작 시 구성된 훅당 1회                   | `hook_event`, `hook_type`, `hook_source`                                                                                                                                      |
+| `hook_execution_start`    | 훅 실행 시작 시                                | `hook_event`, `hook_name`, `num_hooks`                                                                                                                                        |
+| `hook_execution_complete` | 훅 실행 완료 시                                | `num_success`, `num_blocking`, `num_non_blocking_error`, `num_cancelled`, `total_duration_ms`                                                                                 |
+| `hook_plugin_metrics`     | 공식 마켓플레이스 플러그인 훅이 메트릭 발행 시 | `plugin_id`, `hook_event`, 플러그인이 정의한 키 (최대 20)                                                                                                                     |
+| `compaction`              | 대화 컴팩션 완료 시                            | `trigger` (auto/manual), `success`, `duration_ms`, `pre_tokens`, `post_tokens`, `error`                                                                                       |
+| `feedback_survey`         | 세션 품질 설문 표시·응답 시                    | `event_type`, `appearance_id`, `survey_type`, `response`                                                                                                                      |
 
 이벤트 상관관계: 모든 이벤트는 `prompt_id` 속성을 공유합니다. 단일 프롬프트가 일으킨
 모든 활동(여러 api_request + 도구 실행)을 한 번에 추적하려면 같은 `prompt_id`로 필터링.
@@ -314,15 +314,15 @@ OTel SDK의 **단위 접미사 자동 부여 규칙**:
 
 `OTEL_LOG_TOOL_DETAILS=1` + 이벤트 OTLP export 만으로 풍부한 감사 로그를 얻을 수 있습니다.
 
-| 감지하고 싶은 신호                  | 이벤트                                              | 핵심 속성                                            |
-| ----------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| 도구 호출 허용/거부, 그리고 어떻게     | `tool_decision`                                     | `decision`, `source`, `tool_name`                    |
-| 권한 모드 에스컬레이션               | `permission_mode_changed`                           | `from_mode`, `to_mode`, `trigger`                    |
-| 정책 훅이 작업을 차단함              | `hook_execution_complete`                           | `hook_event`, `num_blocking`                         |
-| 로그인 / 로그아웃 / 인증 실패        | `auth`                                              | `action`, `success`, `error_category`                |
-| MCP 서버 연결 및 실패                | `mcp_server_connection`                             | `status`, `server_name`, `error_code`                |
-| 플러그인 설치 출처                   | `plugin_installed`                                  | `plugin.name`, `marketplace.is_official`              |
-| 실행된 명령 / 터치된 파일            | `tool_result` (단, `OTEL_LOG_TOOL_DETAILS=1` 필요)  | `tool_parameters` (Bash command, file_path 등)        |
+| 감지하고 싶은 신호                 | 이벤트                                             | 핵심 속성                                      |
+| ---------------------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| 도구 호출 허용/거부, 그리고 어떻게 | `tool_decision`                                    | `decision`, `source`, `tool_name`              |
+| 권한 모드 에스컬레이션             | `permission_mode_changed`                          | `from_mode`, `to_mode`, `trigger`              |
+| 정책 훅이 작업을 차단함            | `hook_execution_complete`                          | `hook_event`, `num_blocking`                   |
+| 로그인 / 로그아웃 / 인증 실패      | `auth`                                             | `action`, `success`, `error_category`          |
+| MCP 서버 연결 및 실패              | `mcp_server_connection`                            | `status`, `server_name`, `error_code`          |
+| 플러그인 설치 출처                 | `plugin_installed`                                 | `plugin.name`, `marketplace.is_official`       |
+| 실행된 명령 / 터치된 파일          | `tool_result` (단, `OTEL_LOG_TOOL_DETAILS=1` 필요) | `tool_parameters` (Bash command, file_path 등) |
 
 SIEM 전용 별도 엔드포인트로 이벤트만 보내고 싶다면 `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
 환경변수로 메트릭과 분리 가능합니다.
