@@ -1,0 +1,190 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: llm-monitoring
+type: Opaque
+stringData:
+  # 운영 환경에서는 반드시 변경하세요. kubectl create secret 으로 덮어쓰는 것을 권장.
+  admin-user: admin
+  admin-password: admin
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: llm-monitoring
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus.llm-monitoring.svc.cluster.local:9090
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.llm-monitoring.svc.cluster.local:3100
+        jsonData:
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: '"trace_id":"([a-f0-9]+)"'
+              name: TraceID
+              url: '$${__value.raw}'
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo.llm-monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: '-1h'
+            spanEndTimeShift: '1h'
+            filterByTraceID: true
+          tracesToMetrics:
+            datasourceUid: prometheus
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: llm-monitoring
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: LLM Monitoring
+        orgId: 1
+        folder: LLM Monitoring
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+---
+# 대시보드 JSON은 별도 ConfigMap으로 분리.
+# 스크립트로 docker-compose/configs/grafana/dashboards/llm-overview.json 에서 생성하려면:
+#   kubectl -n llm-monitoring create configmap grafana-dashboards \
+#     --from-file=../docker-compose/configs/grafana/dashboards/llm-overview.json
+# 이 파일에는 placeholder만 두고, scripts/k8s-apply.sh가 자동 생성하도록 합니다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: llm-monitoring
+  annotations:
+    note: "scripts/k8s-apply.sh 가 docker-compose/configs/grafana/dashboards/*.json 으로 덮어씁니다."
+data:
+  placeholder.json: |
+    {"title":"placeholder","panels":[]}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: llm-monitoring
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: llm-monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        runAsUser: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.3.0
+          ports:
+            - { containerPort: 3000, name: http }
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef: { name: grafana-admin, key: admin-user }
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: grafana-admin, key: admin-password }
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_FEATURE_TOGGLES_ENABLE
+              value: "traceqlEditor"
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/grafana }
+            - { name: ds, mountPath: /etc/grafana/provisioning/datasources }
+            - { name: dp, mountPath: /etc/grafana/provisioning/dashboards }
+            - { name: dashboards, mountPath: /var/lib/grafana/dashboards }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 20
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 60
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: grafana-data } }
+        - { name: ds, configMap: { name: grafana-datasources } }
+        - { name: dp, configMap: { name: grafana-dashboard-provider } }
+        - { name: dashboards, configMap: { name: grafana-dashboards } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: llm-monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+# 사내 사용자가 직접 접근하기 위한 NodePort (운영은 Ingress 권장)
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-nodeport
+  namespace: llm-monitoring
+spec:
+  type: NodePort
+  selector:
+    app: grafana
+  ports:
+    - { name: http, port: 3000, targetPort: 3000, nodePort: 30300 }

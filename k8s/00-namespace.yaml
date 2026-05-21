@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-monitoring
+  labels:
+    name: llm-monitoring
+    purpose: ai-agent-observability

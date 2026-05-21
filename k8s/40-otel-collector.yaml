@@ -1,0 +1,161 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: llm-monitoring
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:4318
+          grpc:
+            endpoint: 0.0.0.0:4317
+      prometheus/self:
+        config:
+          scrape_configs:
+            - job_name: otel-collector
+              scrape_interval: 30s
+              static_configs:
+                - targets: ["0.0.0.0:8888"]
+
+    processors:
+      memory_limiter:
+        check_interval: 2s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch:
+        send_batch_size: 1024
+        timeout: 5s
+      resourcedetection:
+        detectors: [env, system]
+        timeout: 2s
+        override: false
+      # 사용자측 OTEL_RESOURCE_ATTRIBUTES=user.name=...,team=... 는
+      # resource_to_telemetry_conversion으로 메트릭 라벨화 + Loki index label로 승격됨.
+      attributes/normalize:
+        actions:
+          - key: agent
+            from_attribute: service.name
+            action: upsert
+
+    exporters:
+      prometheusremotewrite:
+        endpoint: http://prometheus.llm-monitoring.svc.cluster.local:9090/api/v1/write
+        tls:
+          insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
+      otlphttp/loki:
+        endpoint: http://loki.llm-monitoring.svc.cluster.local:3100/otlp
+        tls:
+          insecure: true
+      otlp/tempo:
+        endpoint: tempo.llm-monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+      debug:
+        verbosity: basic
+        sampling_initial: 5
+        sampling_thereafter: 200
+
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    service:
+      extensions: [health_check]
+      telemetry:
+        metrics:
+          address: 0.0.0.0:8888
+        logs:
+          level: info
+      pipelines:
+        metrics:
+          receivers: [otlp, prometheus/self]
+          processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+          exporters: [prometheusremotewrite]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+          exporters: [otlphttp/loki]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+          exporters: [otlp/tempo]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: llm-monitoring
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.111.0
+          args: ["--config=/etc/otel/config.yaml"]
+          ports:
+            - { containerPort: 4317, name: otlp-grpc }
+            - { containerPort: 4318, name: otlp-http }
+            - { containerPort: 8888, name: self-metrics }
+            - { containerPort: 13133, name: healthz }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+          readinessProbe:
+            httpGet: { path: /, port: 13133 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: 13133 }
+            initialDelaySeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: llm-monitoring
+  annotations:
+    description: "에이전트는 이 Service의 4318(HTTP) 또는 4317(gRPC)로 OTLP 전송"
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - { name: otlp-grpc, port: 4317, targetPort: 4317 }
+    - { name: otlp-http, port: 4318, targetPort: 4318 }
+    - { name: self-metrics, port: 8888, targetPort: 8888 }
+    - { name: healthz, port: 13133, targetPort: 13133 }
+---
+# 클러스터 외부(로컬 개발자 PC)에서 직접 OTLP를 보내려면 NodePort/Ingress가 필요.
+# 아래는 NodePort 예시 — 운영에서는 Ingress 또는 LoadBalancer 권장.
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector-nodeport
+  namespace: llm-monitoring
+spec:
+  type: NodePort
+  selector:
+    app: otel-collector
+  ports:
+    - { name: otlp-http, port: 4318, targetPort: 4318, nodePort: 30318 }
+    - { name: otlp-grpc, port: 4317, targetPort: 4317, nodePort: 30317 }

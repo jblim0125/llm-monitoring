@@ -1,0 +1,15 @@
+# Prometheus 설정
+# - remote-write 수신은 docker-compose 의 --web.enable-remote-write-receiver 로 이미 활성화
+# - OTel 수집기(8888 자기 metrics) 와 자기 자신을 보조로 스크레이프
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: otel-collector-self
+    static_configs:
+      - targets: ["otel-collector:8888"]

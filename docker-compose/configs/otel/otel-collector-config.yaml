@@ -1,0 +1,112 @@
+# OpenTelemetry Collector 설정
+# 모든 에이전트(Claude Code, GitHub Copilot, OpenClaw 등)는
+# 이 수집기의 4318(HTTP) 또는 4317(gRPC)로 OTLP를 보냅니다.
+#
+# 메트릭은 Prometheus(remote-write), 로그는 Loki(OTLP), 트레이스는 Tempo(OTLP) 로
+# fan-out 됩니다.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+  # Collector 자체의 내부 metrics — Grafana에서 파이프라인 상태 확인용
+  prometheus/self:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["0.0.0.0:8888"]
+
+processors:
+  # OOM 방지
+  memory_limiter:
+    check_interval: 2s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+  # 환경(컨테이너/호스트) 메타데이터 자동 부여
+  resourcedetection:
+    detectors: [env, system]
+    timeout: 2s
+    override: false
+
+  # 비용/소속 식별을 위한 공통 라벨 정규화
+  # - service.name → "agent" 라벨로 통일
+  # - 사용자측에서 OTEL_RESOURCE_ATTRIBUTES=user.name=...,team=... 로 주입한 속성은
+  #   resource_to_telemetry_conversion 으로 자동 메트릭 라벨화됨 → 추가 작업 불필요
+  attributes/normalize:
+    actions:
+      - key: agent
+        from_attribute: service.name
+        action: upsert
+
+  # ──[옵션] 프롬프트 본문 마스킹 ────────────────────────────
+  # 규제 환경에서 Claude Code의 OTEL_LOG_USER_PROMPTS=1 사용 시
+  # prompt 속성을 해시로 대체하려면 아래 주석을 해제하세요.
+  # attributes/redact-prompts:
+  #   actions:
+  #     - key: gen_ai.prompt
+  #       action: hash
+  #     - key: user.prompt
+  #       action: hash
+
+exporters:
+  # 메트릭 → Prometheus (remote-write)
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true   # resource attribute를 메트릭 라벨로 변환 (agent, host 등)
+
+  # 로그 → Loki (OTLP 네이티브 수신)
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # 트레이스 → Tempo (OTLP gRPC)
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # 디버깅 시 stdout 으로도 같이 출력
+  debug:
+    verbosity: basic
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+    logs:
+      level: info
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus/self]
+      processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+      exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/normalize, batch]
+      exporters: [otlp/tempo]

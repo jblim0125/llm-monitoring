@@ -1,0 +1,513 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "사용자 / 팀 단위로 본 LLM 사용량 — OTEL_RESOURCE_ATTRIBUTES로 주입된 user.name, team 라벨을 활용",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "LLM Overview",
+      "type": "dashboards",
+      "tags": ["llm"],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "id": 100,
+      "title": "요약 — 활성 사용자 / Top Talkers",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "id": 1,
+      "title": "활성 사용자 수 (선택 기간)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(count by (user_name) (increase(claude_code_session_count_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "활성 팀 수",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(count by (team) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "총 비용 (USD, 선택 필터)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "unit": "currencyUSD",
+          "decimals": 2
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(claude_code_cost_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "총 토큰 (선택 필터)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "id": 5,
+      "title": "Top 10 사용자 — 토큰",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } } },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (user_name) (increase(claude_code_token_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "legendFormat": "{{user_name}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
+      ]
+    },
+    {
+      "type": "barchart",
+      "id": 6,
+      "title": "Top 10 사용자 — 비용 (USD)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "color": { "mode": "palette-classic" } } },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "orientation": "horizontal",
+        "showValue": "always"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (user_name) (increase(claude_code_cost_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "legendFormat": "{{user_name}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 101,
+      "title": "선택된 사용자 상세 ($user)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 7,
+      "title": "토큰 사용량 추이 — 사용자별",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "last"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (user_name) (rate(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval]))",
+          "legendFormat": "{{user_name}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 8,
+      "title": "비용 추이 — 사용자별 (USD/시간)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (user_name) (rate(claude_code_cost_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__rate_interval])) * 3600",
+          "legendFormat": "{{user_name}}"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "id": 9,
+      "title": "선택 사용자의 모델 분포",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 23 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "donut"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (model) (increase(claude_code_token_usage_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))",
+          "legendFormat": "{{model}}"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "id": 10,
+      "title": "선택 사용자의 도구 사용",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "orientation": "horizontal", "showValue": "always" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(15, sum by (tool) (increase(claude_code_code_edit_tool_decision_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "legendFormat": "{{tool}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 11,
+      "title": "선택 사용자 API 오류 수",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
+      "options": {
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(claude_code_api_error_total{agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 102,
+      "title": "팀별 분석 ($team)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 12,
+      "title": "팀별 토큰 사용량 (stacked)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "fillOpacity": 35, "lineWidth": 1, "stacking": { "mode": "normal" } }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (team) (rate(claude_code_token_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__rate_interval]))",
+          "legendFormat": "{{team}}"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "id": 13,
+      "title": "팀별 비용 합계 (선택 기간)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "color": { "mode": "palette-classic" } } },
+      "options": { "orientation": "horizontal", "showValue": "always" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(20, sum by (team) (increase(claude_code_cost_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))",
+          "legendFormat": "{{team}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
+      ]
+    },
+    {
+      "type": "table",
+      "id": 14,
+      "title": "팀별 종합 통계",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 41 },
+      "options": { "showHeader": true, "footer": { "show": true, "reducer": ["sum"], "fields": ["Value #B", "Value #C", "Value #D"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (team) (count by (team, user_name) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range])))",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (team) (increase(claude_code_session_count_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (team) (increase(claude_code_token_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (team) (increase(claude_code_cost_usage_total{team!=\"\", agent=~\"$agent\", team=~\"$team\"}[$__range]))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true },
+            "renameByName": {
+              "team": "팀",
+              "Value #A": "사용자 수",
+              "Value #B": "세션 수",
+              "Value #C": "토큰",
+              "Value #D": "비용(USD)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 103,
+      "title": "사용자 × 모델 매트릭스",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "collapsed": false
+    },
+    {
+      "type": "table",
+      "id": 15,
+      "title": "사용자 × 모델 — 토큰 (Top 30 사용자)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 51 },
+      "options": { "showHeader": true, "footer": { "show": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(30, sum by (user_name, model) (increase(claude_code_token_usage_total{user_name!=\"\", agent=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}[$__range])))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true } } }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 104,
+      "title": "선택 사용자 로그",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 63 },
+      "collapsed": false
+    },
+    {
+      "type": "logs",
+      "id": 16,
+      "title": "선택 사용자/팀 로그 (Loki)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 64 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=~\"$agent\", team=~\"$team\", user_name=~\"$user\"}"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["llm", "monitoring", "user", "team"],
+  "templating": {
+    "list": [
+      {
+        "name": "agent",
+        "label": "Agent",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\"}, agent)", "refId": "agent" },
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": false, "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "team",
+        "label": "Team",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", agent=~\"$agent\", team!=\"\"}, team)", "refId": "team" },
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": false, "text": "All", "value": "$__all" },
+        "refresh": 2
+      },
+      {
+        "name": "user",
+        "label": "User",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values({__name__=~\"claude_code_.*|gen_ai_.*\", agent=~\"$agent\", team=~\"$team\", user_name!=\"\"}, user_name)", "refId": "user" },
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": false, "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "LLM by User / Team — 개인·팀 단위 사용량",
+  "uid": "llm-by-user",
+  "version": 1,
+  "weekStart": ""
+}

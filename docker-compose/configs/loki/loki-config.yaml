@@ -1,0 +1,63 @@
+# Loki 3.x 단일 노드 설정 (PoC/사내 소규모)
+# OTLP 네이티브 수신 엔드포인트:  POST /otlp/v1/logs
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+# OTLP 수신 시 어떤 resource attribute를 index label로 승격할지 정의.
+# - service.name 등 기본값 + 사내 사용자/팀 식별자
+# - 여기 명시되지 않은 속성은 structured_metadata로만 보존됨 (LogQL `|=` 검색은 가능, 라벨 필터는 불가)
+distributor:
+  otlp_config:
+    default_resource_attributes_as_index_labels:
+      - service.name
+      - service.namespace
+      - service.instance.id
+      - deployment.environment
+      - user.name
+      - user.id
+      - user.email
+      - team
+      - org.unit
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ruler:
+  alertmanager_url: http://localhost:9093
+
+# OTLP 수신은 limits_config 의 allow_structured_metadata 가 true 여야 함 (3.0+)
+limits_config:
+  allow_structured_metadata: true
+  volume_enabled: true
+  retention_period: 168h    # 7일
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+
+# 압축/리텐션 관리
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem

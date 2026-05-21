@@ -1,0 +1,115 @@
+# LLM 사용량 모니터링 풀스택 (자체 호스팅)
+# OTel Collector → Prometheus (metrics) / Loki (logs) / Tempo (traces) → Grafana
+
+name: llm-monitoring
+
+networks:
+  obs:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+
+services:
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector (Contrib)
+  #  - 4317/grpc, 4318/http 로 OTLP 수신
+  #  - 메트릭은 prometheusremotewrite, 로그는 Loki OTLP, 트레이스는 Tempo로 fan-out
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./configs/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Collector 자기 자신의 metrics
+      - "13133:13133" # health_check
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks: [obs]
+
+  # ---------------------------------------------------------------------------
+  # Prometheus  (remote-write 수신 모드)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-remote-write-receiver
+      - --enable-feature=otlp-write-receiver
+      - --enable-feature=exemplar-storage
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [obs]
+
+  # ---------------------------------------------------------------------------
+  # Loki  (3.x — OTLP 네이티브 수신: /otlp/v1/logs)
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./configs/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks: [obs]
+
+  # ---------------------------------------------------------------------------
+  # Tempo (트레이스 OTLP 수신)
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    user: "0"
+    volumes:
+      - ./configs/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # tempo HTTP/query
+      - "9095:9095"   # tempo gRPC query
+    networks: [obs]
+
+  # ---------------------------------------------------------------------------
+  # Grafana  (Prometheus/Loki/Tempo 데이터소스 + LLM 대시보드 자동 프로비저닝)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor"
+    volumes:
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks: [obs]
